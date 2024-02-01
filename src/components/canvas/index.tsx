@@ -7,7 +7,7 @@ function resizeCanvasToDisplaySize(canvas: HTMLCanvasElement, ctx: CanvasRenderi
     
     const { width, height } = canvas.getBoundingClientRect()
     if (canvas.width !== width || canvas.height !== height) {
-      const { devicePixelRatio:ratio=1 } = window
+      const { devicePixelRatio:ratio = 1 } = window
       canvas.width = width * ratio
       canvas.height = height * ratio
       ctx.scale(ratio, ratio);
@@ -42,24 +42,32 @@ const useCanvas = (draw: CanvasDraw) => {
     return canvasRef;
 };
 
+const mapMouseButtonNumber = (mouseButtonNumber: number): MouseButton => {
+    if (mouseButtonNumber === 0) return MouseButton.LEFT;
+    return MouseButton.RIGHT;
+}
 
 const Canvas: FC<CanvasProps> = props => {
     const draw = props.draw ?? (() => {});
     const canvasRef = useCanvas(draw);
     const createMouseContext = (event: MouseEvent): MouseContext => {
-        let button: MouseButton = MouseButton.LEFT;
-        if (event.button === 2) { button = MouseButton.RIGHT; }
-        const { devicePixelRatio:ratio=1 } = window
+        const button: MouseButton = mapMouseButtonNumber(event.button);
+        // const { devicePixelRatio:ratio=1 } = window
         const ctx: MouseContext = {
             pos: Vec2.new(
-                event.clientX * ratio,
-                event.clientY * ratio
+                event.clientX,
+                event.clientY
             ),
             button: button
         };
         return ctx;
     }
     const mouseDownHandler: MouseEventHandler = (event) => {
+        const button: MouseButton = mapMouseButtonNumber(event.button);
+        
+        // cancel mouse right click presses.
+        if (button === MouseButton.RIGHT) return;
+
         const ctx = createMouseContext(event);
         if (props.onMouseDown) {
             props.onMouseDown(ctx)
@@ -79,6 +87,13 @@ const Canvas: FC<CanvasProps> = props => {
             props.onMouseMove(ctx);
         }
     }
+
+    const mouseLeftHandler: MouseEventHandler = (event) => {
+        const ctx = createMouseContext(event);
+        if (props.onMouseUp) {
+            props.onMouseUp(ctx);
+        }
+    };
 
     useEffect(() => {
         const onMouseWheel = props.onMouseWheel;
@@ -100,6 +115,7 @@ const Canvas: FC<CanvasProps> = props => {
 
     return (
         <canvas
+            onMouseLeave={mouseLeftHandler}
             onMouseDown={mouseDownHandler}
             onMouseUp={mouseUpHandler}
             onMouseMove={mouseMoveHandler}
